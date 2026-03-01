@@ -2,8 +2,16 @@
 import sys
 import os
 
-# Add the parent directory to sys.path to allow importing the aras package
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+# Get the absolute path of this script, resolving symlinks
+script_path = os.path.realpath(__file__)
+# Get the directory containing this script (bin/)
+script_dir = os.path.dirname(script_path)
+# Get the project root directory (parent of bin/)
+project_root = os.path.dirname(script_dir)
+
+# Add the project root to sys.path so 'aras' package can be imported
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
 from aras.cli import main
 

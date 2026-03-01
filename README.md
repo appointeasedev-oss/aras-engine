@@ -1,39 +1,68 @@
-# Aras Engine
+# Aras AI Agent
 
-Aras is a Termux-compatible CLI agent designed to run on Android without root. It provides a multi-call AI agent capable of generating code and managing a workspace.
+Aras is a comprehensive, single-file AI agent for Telegram, designed to be a versatile and intelligent assistant. It supports multiple AI providers and comes equipped with a suite of tools for web research, coding, file management, and email operations.
 
 ## Features
 
-- **Multi-call AI Agent**: Aras can think, reason, and perform multiple API calls to solve complex tasks.
-- **Workspace Management**: Aras can create React apps or pure HTML/CSS/JS apps in its workspace.
-- **Telegram Bot Integration**: Chat with Aras from your Telegram bot.
-- **Local Terminal Chat**: Chat with Aras directly from your terminal.
-- **OpenRouter Support**: Multi-key and multi-model support for reliable AI interactions.
+-   **Single-file Application**: The entire agent logic is contained within `aras.py`.
+-   **Multi-provider Support**: Integrates with OpenAI, OpenRouter, and Minimax.
+-   **Termux Compatible**: Optimized for running on mobile devices via Termux.
+-   **Interactive Setup**: Easy first-time configuration via Telegram.
+-   **Tool Suite**:
+    -   🔍 **Web Research**: Search the web and retrieve information.
+    -   💻 **Code Execution**: Write and run Python code.
+    -   📁 **File Management**: Create, read, delete, and list files and folders.
+    -   📧 **Email Management**: Send and read emails (requires SMTP/IMAP setup).
+-   **Human-like Personality**: Customizable agent name and persona.
 
 ## Installation
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/appointeasedev-oss/aras-engine
-   ```
-2. Run the setup script:
-   ```bash
-   cd aras-engine && bash setup.sh
-   ```
-3. Restart your terminal or run `source ~/.bashrc`.
+### Standard Environment
+
+1.  Clone the repository:
+    ```bash
+    git clone https://github.com/appointeasedev-oss/aras-engine.git
+    cd aras-engine
+    ```
+2.  Install dependencies:
+    ```bash
+    pip install -r requirements.txt
+    ```
+3.  Run the agent:
+    ```bash
+    python aras.py
+    ```
+
+### Termux Environment
+
+1.  Install Python and Git:
+    ```bash
+    pkg install python git
+    ```
+2.  Clone the repository and install dependencies:
+    ```bash
+    git clone https://github.com/appointeasedev-oss/aras-engine.git
+    cd aras-engine
+    pip install -r requirements.txt
+    ```
+3.  Run the agent:
+    ```bash
+    python aras.py
+    ```
 
 ## Usage
 
-- `aras setup`: Setup device local storage and workspace folder.
-- `aras configure`: Configure Telegram bot ID and allowed user IDs.
-- `aras models`: Manage OpenRouter API keys and models.
-- `aras serve`: Start the Telegram bot.
-- `aras serve local`: Start a terminal-based chat.
+On the first run, the agent will guide you through the setup process on Telegram. You will need:
+-   A Telegram Bot Token (from [@BotFather](https://t.me/BotFather))
+-   Your Telegram User ID (from [@userinfobot](https://t.me/userinfobot))
+-   An API key from your chosen AI provider (OpenAI, OpenRouter, or Minimax)
 
-## Workspace
+### Commands
 
-The default workspace is located at `~/aras-workspace`. You can change this in the configuration.
+-   `/start`: Initiates the bot and setup process.
+-   `/help`: Displays available commands and features.
+-   `/reset`: Resets the configuration and restarts the setup.
 
 ## License
 
-MIT
+MIT License

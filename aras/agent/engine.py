@@ -1,6 +1,7 @@
 import json
 import subprocess
 import os
+import sys
 from aras.agent.llm import LLMClient
 from aras.workspace.manager import WorkspaceManager
 
@@ -33,34 +34,47 @@ class ArasAgent:
         - If a task is complex, use "plan" to outline your steps.
         - Use "tool" and "args" to perform actions.
         - Use "answer" only when the entire task is complete.
-        - You can execute multiple tools sequentially.
+        - You can execute only ONE tool per response.
+        - If you don't need a tool, just provide "thought" and "answer".
         
-        Example JSON:
+        Example JSON for tool use:
         {
-            "thought": "I need to create a React app and then start the dev server.",
+            "thought": "I need to create a React app.",
             "plan": ["Create project structure", "Install dependencies", "Start dev server"],
             "tool": "execute_command",
-            "args": {"command": "npx create-vite my-app --template react-ts"}
+            "args": {"command": "npx create-vite my-react-app --template react-ts"}
+        }
+
+        Example JSON for final answer:
+        {
+            "thought": "I have created the file as requested.",
+            "answer": "The file 'hello.html' has been created in the workspace."
         }
         """
 
     def execute_tool(self, tool_name, args):
         print(f"[*] Executing tool: {tool_name} with args: {args}")
+        if not tool_name or tool_name.lower() == "none":
+            return "No tool executed."
+
         try:
+            # Normalizing argument names: some models use 'path' instead of 'file_path'
+            file_path = args.get("file_path") or args.get("path")
+            
             if tool_name == "list_files":
                 return self.workspace.list_files()
             elif tool_name == "read_file":
-                return self.workspace.read_file(args.get("file_path"))
+                return self.workspace.read_file(file_path)
             elif tool_name == "write_file":
-                return self.workspace.write_file(args.get("file_path"), args.get("content"))
+                return self.workspace.write_file(file_path, args.get("content"))
             elif tool_name == "delete_file":
-                return self.workspace.delete_file(args.get("file_path"))
+                return self.workspace.delete_file(file_path)
             elif tool_name == "execute_command":
                 cmd = args.get("command")
                 # Run command in workspace directory
                 result = subprocess.run(
                     cmd, shell=True, capture_output=True, text=True, 
-                    cwd=self.workspace.workspace_path, timeout=120
+                    cwd=self.workspace.workspace_path, timeout=600 # 10 mins for heavy tasks
                 )
                 return {
                     "stdout": result.stdout,
@@ -70,18 +84,18 @@ class ArasAgent:
             elif tool_name == "run_app":
                 app_dir = args.get("app_dir", ".")
                 port = args.get("port", 3000)
-                # This would typically start a background process
-                # For Termux, we'll use a simplified version
                 full_app_path = self.workspace.workspace_path / app_dir
-                cmd = f"cd {full_app_path} && npm run dev -- --port {port} &"
+                # Use nohup to keep it running and redirect output
+                cmd = f"nohup npm run dev -- --port {port} > app.log 2>&1 &"
                 subprocess.Popen(cmd, shell=True, cwd=full_app_path)
-                return f"App starting on port {port} in background."
+                return f"App starting on port {port} in background. Check app.log for details."
             elif tool_name == "stop_app":
                 port = args.get("port")
+                # More robust way to kill process on port
                 subprocess.run(f"fuser -k {port}/tcp", shell=True)
                 return f"Stopped app on port {port}."
             else:
-                return f"Unknown tool: {tool_name}"
+                return f"Error: Unknown tool '{tool_name}'."
         except Exception as e:
             return f"Tool execution error: {str(e)}"
 
@@ -92,31 +106,19 @@ class ArasAgent:
         response = self.llm.chat(query, system_prompt=self.system_prompt)
         
         # Multi-step loop
-        for step in range(15): # Increased steps for advanced tasks
-            if "tool" in response:
+        for step in range(20): 
+            if "tool" in response and response["tool"] and response["tool"].lower() != "none":
                 tool_result = self.execute_tool(response["tool"], response.get("args", {}))
                 # Feed result back to agent
                 response = self.llm.chat(f"Tool result: {json.dumps(tool_result)}")
             elif "answer" in response:
                 return response["answer"]
             else:
-                # Fallback if JSON is malformed or missing keys
-                return response.get("content", "Task completed or waiting for input.")
+                # If no tool and no answer, but has thought, it might be stuck or finished without 'answer' key
+                if "thought" in response and not any(k in response for k in ["tool", "answer"]):
+                     # Try one more chat to get the answer
+                     response = self.llm.chat("Please provide the final answer if you are done, or use a tool if needed.")
+                else:
+                    return response.get("content", "Task completed.")
         
         return "Maximum reasoning steps reached. Please refine your request."
-
-def start_local_chat():
-    agent = ArasAgent()
-    print("\n--- Aras Advanced AI Agent ---")
-    print("Type 'exit' to quit.\n")
-    while True:
-        try:
-            query = input("User > ")
-            if query.lower() in ["exit", "quit"]:
-                break
-            answer = agent.process_query(query)
-            print(f"\nAras > {answer}\n")
-        except KeyboardInterrupt:
-            break
-        except Exception as e:
-            print(f"\n[!] Error: {e}\n")

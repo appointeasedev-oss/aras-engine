@@ -31,7 +31,7 @@ class WorkspaceManager:
                     return f.read()
             except Exception as e:
                 return f"Error reading file: {e}"
-        return "File not found."
+        return f"File not found: {file_path}"
 
     def write_file(self, file_path, content):
         full_path = self.workspace_path / file_path
@@ -63,9 +63,12 @@ class WorkspaceManager:
         project_path = self.workspace_path / project_name
         if project_type == "react":
             # Use Vite for fast React setup
+            # --template react-ts is commonly used
             cmd = f"npx create-vite {project_name} --template react-ts"
             result = subprocess.run(cmd, shell=True, cwd=self.workspace_path, capture_output=True, text=True)
             if result.returncode == 0:
+                # Install dependencies immediately for better UX
+                subprocess.run("npm install", shell=True, cwd=project_path)
                 return f"Created React (Vite) project: {project_name}"
             else:
                 return f"Error creating React project: {result.stderr}"

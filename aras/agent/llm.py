@@ -2,6 +2,7 @@ import requests
 import json
 import time
 import os
+import re
 from pathlib import Path
 from aras.config import load_config
 
@@ -48,7 +49,8 @@ class LLMClient:
                         data=json.dumps({
                             "model": model,
                             "messages": messages,
-                            "response_format": {"type": "json_object"}
+                            # Remove response_format if it causes issues, or keep it if model supports it
+                            # "response_format": {"type": "json_object"} 
                         }),
                         timeout=120 
                     )
@@ -56,19 +58,24 @@ class LLMClient:
                         result = response.json()
                         content = result['choices'][0]['message']['content']
                         
-                        # Try to parse JSON content
+                        # Enhanced JSON extraction
+                        json_content = None
+                        
+                        # Try direct parse
                         try:
                             json_content = json.loads(content)
                         except json.JSONDecodeError:
-                            import re
-                            json_match = re.search(r'\{.*\}', content, re.DOTALL)
+                            # Try regex extraction
+                            json_match = re.search(r'(\{.*\})', content, re.DOTALL)
                             if json_match:
                                 try:
-                                    json_content = json.loads(json_match.group())
+                                    json_content = json.loads(json_match.group(1))
                                 except:
-                                    json_content = {"content": content}
-                            else:
-                                json_content = {"content": content}
+                                    pass
+                        
+                        if json_content is None:
+                            # If still no JSON, wrap content in a thought
+                            json_content = {"thought": "The model did not provide a valid JSON response.", "answer": content}
                         
                         # Update history
                         self.history.append({"role": "user", "content": prompt})
@@ -77,7 +84,7 @@ class LLMClient:
                         
                         return json_content
                     else:
-                        print(f"Error with model {model}: {response.text}")
+                        print(f"Error with model {model}: {response.status_code} - {response.text}")
                 except Exception as e:
                     print(f"Exception with model {model}: {e}")
                 time.sleep(1)

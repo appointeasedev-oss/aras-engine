@@ -1,6 +1,8 @@
 import requests
 import json
 import time
+import os
+from pathlib import Path
 from aras.config import load_config
 
 class LLMClient:
@@ -8,7 +10,14 @@ class LLMClient:
         config = load_config()
         self.api_keys = config.get("openrouter_api_keys", [])
         self.models = config.get("models", [])
+        self.history_dir = Path.home() / ".aras" / "history"
+        self.history_dir.mkdir(parents=True, exist_ok=True)
+        self.history_file = self.history_dir / f"session_{int(time.time())}.json"
         self.history = []
+
+    def save_history(self):
+        with open(self.history_file, "w") as f:
+            json.dump(self.history, f, indent=2)
 
     def chat(self, prompt, system_prompt=None):
         messages = []
@@ -33,13 +42,15 @@ class LLMClient:
                         headers={
                             "Authorization": f"Bearer {key}",
                             "Content-Type": "application/json",
+                            "HTTP-Referer": "https://github.com/appointeasedev-oss/aras-engine",
+                            "X-Title": "Aras Engine"
                         },
                         data=json.dumps({
                             "model": model,
                             "messages": messages,
                             "response_format": {"type": "json_object"}
                         }),
-                        timeout=60 
+                        timeout=120 
                     )
                     if response.status_code == 200:
                         result = response.json()
@@ -62,6 +73,7 @@ class LLMClient:
                         # Update history
                         self.history.append({"role": "user", "content": prompt})
                         self.history.append({"role": "assistant", "content": content})
+                        self.save_history()
                         
                         return json_content
                     else:

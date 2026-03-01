@@ -1,0 +1,4 @@
+requests
+pyTelegramBotAPI
+pathlib
+argparse
